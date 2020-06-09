@@ -1,0 +1,71 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/rust:1.44-stretch-node
+    steps:
+      - checkout
+      - restore_cache:
+          key: v1-rust-cache-{{ .Branch }}-
+      - run:
+          name: Build and test
+          command: |
+            echo $CARGO_HOME
+            rustup component add rustfmt
+            cargo install cargo-audit
+            cargo fmt -- --check
+            cargo audit
+            cargo build
+            cargo test
+      - run:
+          name: Release build
+          command: >
+            OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl
+            cargo build --release
+      - run:
+          name: Stage files
+          command: |
+            mkdir dist
+            cp -a ./target/release/epg-server dist/app
+            cp -a ./static dist
+            install -m 755 backup-db.sh dist
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+      - save_cache:
+          key: v1-rust-cache-{{ .Branch }}-{{ checksum "Cargo.lock" }}
+          paths:
+            - "/usr/local/cargo/registry"
+            - "./target"
+  mirror:
+    docker:
+      - image: circleci/python
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "19:db:1c:7a:53:a2:a6:7f:c4:3b:9b:57:de:5a:ee:d6"
+      - run:
+          name: GitHub mirror
+          command: |
+            git remote add github git@github.com:technic/web-settings.git
+            git push --mirror github
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - master
+      # - mirror:
+      #     filters:
+      #       branches:
+      #         only:
+      #           - master
