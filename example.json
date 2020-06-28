@@ -1,0 +1,38 @@
+[
+    {
+        "name": "a",
+        "title": "TestA",
+        "type": "string",
+        "value": "qwerty"
+    },
+    {
+        "name": "b",
+        "title": "TestB",
+        "type": "integer",
+        "value": 33,
+        "min": 0,
+        "max": 100
+    },
+    {
+        "name": "c",
+        "title": "TestC",
+        "type": "selection",
+        "value": "foo",
+        "options": [
+            {
+                "value": "foo",
+                "title": "Foo!"
+            },
+            {
+                "value": "bar",
+                "title": "Bar!"
+            }
+        ]
+    },
+    {
+        "name": "d",
+        "title": "TestD",
+        "type": "bool",
+        "value": true
+    }
+]
