@@ -26,7 +26,7 @@ impl From<Secret> for String {
 
 enum ClientSt {
     Created,
-    Submitted,
+    Submitted(u32),
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -44,7 +44,6 @@ struct Client {
     settings: Vec<ConfigItem>,
     st: ClientSt,
     sender: Option<Sender<Message>>,
-    revision: u32,
 }
 
 impl Client {
@@ -53,16 +52,12 @@ impl Client {
             settings,
             st: ClientSt::Created,
             sender: None,
-            revision: 0,
         }
     }
 
     /// Notify receiver about changed settings
     fn send(&mut self) {
-        match self.sender.take() {
-            Some(s) => s.send(Ok(self.current_values())).map_err(|_| ()).unwrap(),
-            None => eprintln!("no sender."),
-        }
+        self.send_message(Ok(self.current_values()));
     }
 
     fn get_reciver(&mut self) -> Receiver<Message> {
@@ -73,15 +68,33 @@ impl Client {
     }
 
     fn send_err(&mut self) {
+        self.send_message(Err(()));
+    }
+
+    fn send_message(&mut self, message: Message) {
         match self.sender.take() {
-            Some(s) => s.send(Err(())).map_err(|_| ()).unwrap(),
-            None => eprintln!("no sender."),
+            Some(s) => {
+                if let Err(_) = s.send(message) {
+                    eprintln!("no reciever")
+                }
+            }
+            None => eprintln!("no sender"),
         }
+    }
+
+    fn update_rev(&mut self) {
+        self.st = match self.st {
+            ClientSt::Created => ClientSt::Submitted(1),
+            ClientSt::Submitted(r) => ClientSt::Submitted(r + 1),
+        };
     }
 
     fn current_values(&self) -> Values {
         Values {
-            revision: self.revision,
+            revision: match self.st {
+                ClientSt::Created => 0,
+                ClientSt::Submitted(r) => r,
+            },
             values: self.settings.clone(),
         }
     }
@@ -207,28 +220,45 @@ impl Model {
     }
 
     /// Returns a Future that waits for values to be updated
+    /// Previous sender (if any) will be drop,
+    /// so previous futures returned from this method are going to resolve with error
     pub fn values(&mut self, sid: &str, revision: u32) -> BoxFuture<'static, Message> {
         let client = self.clients.get_mut(&Secret(sid.to_owned())).ok_or(());
         let client = match client {
             Ok(c) => c,
             Err(_) => return future::err(()).boxed(),
         };
-
-        if revision < client.revision {
-            // we have newer revision immediately
-            return future::ok(client.current_values()).boxed();
-        } else if revision == client.revision {
-            // recreate communication channel
-            let f = client.get_reciver().map(|res| res.unwrap_or(Err(())));
-            return Box::pin(f);
-        } else {
-            // must never happen
-            return future::err(()).boxed();
+        match client.st {
+            ClientSt::Created => {
+                if revision != 0 {
+                    // must never happen
+                    return future::err(()).boxed();
+                }
+                // recreate communication channel and wait for login
+                let f = client.get_reciver().map(|res| res.unwrap_or(Err(())));
+                return Box::pin(f);
+            }
+            ClientSt::Submitted(current_rev) => {
+                if revision < current_rev {
+                    // we have newer revision immediately
+                    return future::ok(client.current_values()).boxed();
+                } else if revision == current_rev {
+                    // recreate communication channel and wait for new values
+                    let f = client.get_reciver().map(|res| res.unwrap_or(Err(())));
+                    return Box::pin(f);
+                } else {
+                    // must never happen
+                    return future::err(()).boxed();
+                }
+            }
         }
     }
 
     pub fn auth(&mut self, key: &str) -> Result<Secret, &'static str> {
-        self.keys.take_data(key)
+        let secret = self.keys.take_data(key)?;
+        let client = self.clients.get_mut(&secret).ok_or("Session_expired")?;
+        client.send();
+        Ok(secret)
     }
 
     pub fn settings(&mut self, s: &Secret) -> Result<&Vec<ConfigItem>, &'static str> {
@@ -255,7 +285,7 @@ impl Model {
                 None => {}
             }
         }
-        client.revision += 1;
+        client.update_rev();
         client.send();
         Ok(())
     }
