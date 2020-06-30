@@ -26,9 +26,8 @@ jobs:
           name: Stage files
           command: |
             mkdir dist
-            cp -a ./target/release/epg-server dist/app
-            cp -a ./static dist
-            install -m 755 backup-db.sh dist
+            cp -a ./target/release/web-settings dist/app
+            cp -a ./templates dist
       - persist_to_workspace:
           root: .
           paths:
@@ -38,6 +37,26 @@ jobs:
           paths:
             - "/usr/local/cargo/registry"
             - "./target"
+  deploy:
+    docker:
+      - image: circleci/rust:1.44-stretch-node
+    steps:
+      - attach_workspace:
+          at: .
+      - add_ssh_keys:
+          fingerprints:
+            - "45:16:fd:9e:94:b8:84:59:ae:5b:50:6e:e7:e2:e5:09"
+      # - run:
+      #     name: Add fingerprint
+      #     command: echo $UPDATE_FINGERPRINT >> ~/.ssh/known_hosts
+      - run:
+          name: Deploy
+          command: |
+            sudo apt-get update -y
+            sudo apt-get install -y rsync
+            ls -lR ./dist
+            rsync --recursive --delete-after --delay-updates ./dist/ $HOSTNAME:$APP_PATH
+            ssh $HOSTNAME sudo /bin/systemctl restart "web-settings"
   mirror:
     docker:
       - image: circleci/python
