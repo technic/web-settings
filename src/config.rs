@@ -88,7 +88,7 @@ impl From<&str> for ConfigString {
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
-struct ConfigBool {
+pub struct ConfigBool {
     value: bool,
 }
 
@@ -103,7 +103,7 @@ impl From<bool> for ConfigBool {
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
-struct RawConfigInteger {
+pub struct RawConfigInteger {
     min: u32,
     max: u32,
     value: u32,
@@ -157,15 +157,15 @@ impl TryFrom<RawConfigInteger> for ConfigInteger {
     }
 }
 
-validated! {#[derive(Clone, PartialEq)] ConfigInteger(RawConfigInteger)}
+validated! {#[derive(Clone, PartialEq)] pub ConfigInteger(RawConfigInteger)}
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
-struct RawConfigSelection {
+pub struct RawConfigSelection {
     value: String,
     options: Vec<Choice>,
 }
 
-validated! {#[derive(Clone, PartialEq)] ConfigSelection(RawConfigSelection)}
+validated! {#[derive(Clone, PartialEq)] pub ConfigSelection(RawConfigSelection)}
 
 impl Validate for ConfigSelection {
     type Arg = str;
