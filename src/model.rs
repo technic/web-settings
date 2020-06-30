@@ -102,6 +102,7 @@ impl Client {
 
 use std::collections::HashMap;
 
+#[derive(Debug)]
 struct Payload<T> {
     data: T,
     timestamp: u64,
@@ -200,7 +201,8 @@ impl Model {
             match self.clients.entry(secret.clone()) {
                 Entry::Vacant(v) => {
                     v.insert(Client::new(settings));
-                    return (self.keys.new_key(secret.clone()), secret);
+                    let key = self.keys.new_key(secret.clone());
+                    return (key, secret);
                 }
                 Entry::Occupied(_) => {
                     self.cleanup();
