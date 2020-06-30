@@ -236,8 +236,32 @@ fn app_config(cfg: &mut web::ServiceConfig) {
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+    let args = clap::App::new("web settings server")
+        .version(VERSION)
+        .author("technic93")
+        .about("Web interface to edit settings on remote embeded devices")
+        .arg(
+            clap::Arg::with_name("port")
+                .long("port")
+                .env("APP_PORT")
+                .takes_value(true)
+                .default_value("8000")
+                .help("The port to listen to"),
+        )
+        .get_matches();
+
+    let port = {
+        let s = args.value_of("port").unwrap();
+        s.parse::<i32>().unwrap_or_else(|e| {
+            eprintln!("Bad port argument '{}', {}.", s, e);
+            std::process::exit(1);
+        })
+    };
+
     env_logger::init();
-    let addr = "127.0.0.1:8000";
+    let addr = format!("127.0.0.1:{}", port);
     println!("Starting web server at {}", addr);
 
     // Global shared state varible
