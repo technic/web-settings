@@ -1,27 +1,12 @@
-use futures::future::BoxFuture;
+use actix_session::{CookieSession, Session};
 /// Web/json interface to access settings
-/// based on [Gotham](https://gotham.rs/) web framework
-use futures::future::FutureExt;
-use futures::prelude::*;
-use gotham::handler::IntoHandlerFuture;
-use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError, IntoResponse};
-use gotham::helpers::http::response::create_empty_response;
-use gotham::hyper::{body, Body, Response, StatusCode};
-use gotham::middleware::session::{NewSessionMiddleware, SessionData};
-use gotham::middleware::state::StateMiddleware;
-use gotham::pipeline::single::single_pipeline;
-use gotham::router::Router;
-use gotham::state::{FromState, State};
-use gotham_derive::{StateData, StaticResponseExtender};
+use actix_web::{error, http, middleware, web, App, Error, HttpResponse, HttpServer, Responder};
+
 use lazy_static::lazy_static;
 use mime;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::borrow::Cow;
 use std::collections::HashMap;
-use std::ops::Deref;
-use std::pin::Pin;
-use std::sync::Arc;
 use std::sync::Mutex;
 
 use tera::{Context, Tera};
@@ -33,10 +18,6 @@ use crate::config::ConfigItem;
 mod model;
 use crate::model::Model;
 use crate::model::Secret;
-
-mod helpers;
-use crate::helpers::{to_handler_result, SimpleHandler, SimpleMutHandler};
-use crate::helpers::{SimpleAsyncHandler, SimpleAsyncMutHandler};
 
 // Assuming the Rust file is at the same level as the templates folder
 // we can get a Tera instance that way:
@@ -55,368 +36,320 @@ fn render(template_name: &str, context: &Context) -> tera::Result<String> {
     // .map(|body| (mime::TEXT_HTML, body))
 }
 
-fn render_html(
-    template_name: &str,
-    context: &Context,
-) -> Result<(mime::Mime, String), HandlerError> {
+fn render_html(template_name: &str, context: &Context) -> Result<HttpResponse, Error> {
     render(template_name, context)
-        .map(|body| (mime::TEXT_HTML, body))
-        .map_err(server_error)
+        .map(|b| {
+            HttpResponse::Ok()
+                .content_type(mime::TEXT_HTML.as_ref())
+                .body(b)
+        })
+        .map_err(error::ErrorInternalServerError)
 }
 
-fn render_json<T>(value: &T) -> Result<(mime::Mime, String), HandlerError>
+fn render_json<T>(value: &T) -> Result<HttpResponse, Error>
 where
     T: Serialize,
 {
     serde_json::to_string(&value)
-        .map(|body| (mime::APPLICATION_JSON, body))
-        .map_err(server_error)
+        .map(|b| {
+            HttpResponse::Ok()
+                .content_type(mime::APPLICATION_JSON.as_ref())
+                .body(b)
+        })
+        .map_err(error::ErrorInternalServerError)
 }
 
-fn bad_request<E>(e: E) -> HandlerError
-where
-    E: std::error::Error + Send + 'static,
-{
-    e.into_handler_error().with_status(StatusCode::BAD_REQUEST)
-}
-
-fn server_error<E>(e: E) -> HandlerError
-where
-    E: std::error::Error + Send + 'static,
-{
-    e.into_handler_error()
-}
-
-async fn extract_json<T>(state: &mut State) -> Result<T, HandlerError>
-where
-    T: serde::de::DeserializeOwned,
-{
-    body::to_bytes(Body::take_from(state))
-        .await
-        .map_err(bad_request)
-        .and_then(|body| serde_json::from_slice::<T>(&body).map_err(bad_request))
-}
-
-pub fn redirect<L: Into<Cow<'static, str>>>(state: &State, location: L) -> Response<Body> {
-    use hyper::header::LOCATION;
-    let mut res = create_empty_response(state, StatusCode::FOUND);
-    res.headers_mut()
-        .insert(LOCATION, location.into().to_string().parse().unwrap());
-    res
-}
-
-trait WithCode<B> {
-    fn with_status(self, code: StatusCode) -> (StatusCode, mime::Mime, B);
-}
-
-impl<B> WithCode<B> for (mime::Mime, B)
-where
-    B: Into<Body>,
-{
-    fn with_status(self, code: StatusCode) -> (StatusCode, mime::Mime, B) {
-        let (mime_type, body) = self;
-        (code, mime_type, body)
-    }
+fn redirect(location: &str) -> HttpResponse {
+    HttpResponse::Found()
+        .header(http::header::LOCATION, location)
+        .finish()
 }
 
 /// Index page that asks user for one-time code
-fn index(state: &State) -> Result<Response<Body>, HandlerError> {
+async fn index() -> impl Responder {
     let context = Context::new();
-    render_html("pages/index.html", &context).map(|body| body.into_response(&state))
+    render_html("pages/index.html", &context)
+}
+
+#[derive(Serialize, Deserialize)]
+struct AccessForm {
+    code: String,
 }
 
 /// Provides access to settigns after code verification
-async fn access_settings(state: &mut State) -> Result<Response<Body>, HandlerError> {
-    let body_content = body::to_bytes(Body::take_from(state))
-        .await
-        .map_err(bad_request)?;
-
-    let mut form_data = form_urlencoded::parse(&body_content).into_owned();
-    let code =
-        match form_data.find_map(|(key, value)| if key == "code" { Some(value) } else { None }) {
-            Some(code) => code,
-            // TODO: We may want to return Err here
-            None => return Ok(create_empty_response(&state, StatusCode::BAD_REQUEST)),
-        };
+async fn access_settings(
+    model: web::Data<ModelState>,
+    session: Session,
+    form: web::Form<AccessForm>,
+) -> Result<HttpResponse, Error> {
     let secret = {
-        let mut m = ModelState::borrow_from(&state).inner.lock().unwrap();
-        m.auth(&code)
+        let mut m = model.inner.lock().unwrap();
+        m.auth(&form.code)
     };
     match secret {
         Ok(secret) => {
-            use std::ops::DerefMut;
-            let visit_data = SessionData::<Option<Secret>>::borrow_mut_from(state);
-            *visit_data.deref_mut() = Some(secret);
-            return Ok(redirect(&state, "./settings"));
+            session.set(SESSION_SECRET, secret)?;
+            Ok(redirect("./settings"))
         }
         Err(message) => {
             let mut ctx = Context::new();
             ctx.insert("error", message);
-            return Ok(render_html("pages/index.html", &ctx)?.into_response(&state));
+            render_html("pages/index.html", &ctx)
         }
     }
 }
 
 /// Get settings using existing session
-fn get_settings(state: &State) -> Result<Response<Body>, HandlerError> {
-    let secret_opt = SessionData::<Option<Secret>>::borrow_from(state).deref();
+async fn get_settings(
+    model: web::Data<ModelState>,
+    session: Session,
+) -> Result<HttpResponse, Error> {
+    let secret_opt = session.get::<Secret>(SESSION_SECRET)?;
     secret_opt
         .as_ref()
         .map(|secret| {
-            let mut m = ModelState::borrow_from(state).inner.lock().unwrap();
-            match m.settings(&secret).clone() {
+            let config_opt = {
+                let mut m = model.inner.lock().unwrap();
+                let s = m.settings(&secret).map(|v| v.clone());
+                s
+            };
+            match config_opt {
                 Ok(config) => {
                     let ctx = Context::from_value(json!({ "config": config }))
-                        .map_err(|e| e.into_handler_error())?;
-                    let html = render_html("pages/settings.html", &ctx)?;
-                    Ok(html.into_response(state))
+                        .map_err(error::ErrorInternalServerError)?;
+                    render_html("pages/settings.html", &ctx)
                 }
                 // TODO: Flash message
-                Err(_) => Ok(redirect(state, "./")),
+                Err(_) => Ok(redirect("./")),
             }
         })
-        .unwrap_or_else(|| Ok(redirect(state, "./")))
+        .unwrap_or_else(|| Ok(redirect("./")))
 }
 
-/// Sends settings to device
-async fn post_settings(state: &mut State) -> Result<Response<Body>, HandlerError> {
-    let secret: Secret = match SessionData::<Option<Secret>>::borrow_from(state).deref() {
+/// Sends updated settings to server
+async fn post_settings(
+    model: web::Data<ModelState>,
+    session: Session,
+    body: web::Bytes,
+) -> Result<HttpResponse, Error> {
+    let secret: Secret = match session.get::<Secret>(SESSION_SECRET)? {
         Some(s) => s.to_owned(),
         None => {
-            return Ok(redirect(state, "./"));
+            return Ok(redirect("./"));
         }
     };
-    let body_content = body::to_bytes(Body::take_from(state))
-        .await
-        .map_err(bad_request)?;
-
-    let form_data = form_urlencoded::parse(&body_content).into_owned();
+    let form_data = form_urlencoded::parse(&body).into_owned();
     let values = form_data.collect::<HashMap<String, String>>();
     let result = {
-        let mut m = ModelState::borrow_from(&state).inner.lock().unwrap();
+        let mut m = model.inner.lock().unwrap();
         m.update_settings(&secret, values)
     };
-    let res = match result {
-        Ok(_) => render_html("pages/submitted.html", &Context::new())?.with_status(StatusCode::OK),
-        Err(_) => (StatusCode::BAD_REQUEST, mime::TEXT_HTML, String::new()),
-    };
-    Ok(res.into_response(&state))
+    match result {
+        Ok(_) => render_html("pages/submitted.html", &Context::new()),
+        Err(_) => Ok(HttpResponse::Ok().content_type("text/html").body("qqq")),
+    }
 }
 
-async fn new_session(state: &mut State) -> Result<Response<Body>, HandlerError> {
-    let config = extract_json::<Vec<ConfigItem>>(state)
-        .await
-        .map_err(bad_request)?;
-    let (key, secret) = ModelState::borrow_from(state)
-        .inner
-        .lock()
-        .unwrap()
-        .new_client(config);
+async fn new_session(
+    model: web::Data<ModelState>,
+    config: web::Json<Vec<ConfigItem>>,
+) -> Result<HttpResponse, Error> {
+    let (key, secret) = model.inner.lock().unwrap().new_client(config.into_inner());
     render_json(&json!({
         "key": key,
         "secret": secret.to_string(),
     }))
-    .map(|r| r.into_response(state))
 }
 
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize)]
 struct SessionQuery {
     sid: String,
 }
 
 /// End point for device to cancel web interface settings session
-fn end_session(state: &State) -> Result<Response<Body>, HandlerError> {
+async fn end_session(
+    model: web::Data<ModelState>,
+    query: web::Query<SessionQuery>,
+) -> Result<HttpResponse, Error> {
     let result = {
-        let q = SessionQuery::borrow_from(&state);
-        let mut m = ModelState::borrow_from(&state).inner.lock().unwrap();
-        m.remove_client(&q.sid)
+        let mut m = model.inner.lock().unwrap();
+        m.remove_client(&query.sid)
     };
-    let response = match result {
-        Err(_) => create_empty_response(&state, StatusCode::NOT_FOUND),
-        Ok(_) => create_empty_response(&state, StatusCode::OK),
+    let mut response = match result {
+        Err(_) => HttpResponse::NotFound(),
+        Ok(_) => HttpResponse::Ok(),
     };
-    Ok(response)
+    Ok(response.finish())
 }
 
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize)]
 struct PollQuery {
     sid: String,
     revision: u32,
 }
 
 /// End point for device to poll changes made by user
-async fn poll_session(state: &mut State) -> Result<Response<Body>, HandlerError> {
+async fn poll_session(
+    model: web::Data<ModelState>,
+    query: web::Query<PollQuery>,
+) -> Result<HttpResponse, Error> {
     let fut = {
-        let q = PollQuery::borrow_from(&state);
-        let mut m = ModelState::borrow_from(&state).inner.lock().unwrap();
-        m.values(&q.sid, q.revision)
+        let mut m = model.inner.lock().unwrap();
+        m.values(&query.sid, query.revision)
     };
-    let response = match fut.await {
-        Ok(values) => render_json(&values).map(|r| r.with_status(StatusCode::OK)),
-        Err(_) => Ok((StatusCode::NOT_FOUND, mime::APPLICATION_JSON, String::new())),
-    };
-    response.map(|r| r.into_response(state))
+    match fut.await {
+        Ok(values) => render_json(&values),
+        Err(_) => Ok(HttpResponse::NotFound().finish()),
+    }
 }
 
-#[derive(Clone, StateData)]
+const SESSION_SECRET: &str = "secret";
+
 struct ModelState {
-    inner: Arc<Mutex<Model>>,
+    inner: Mutex<Model>,
 }
 
 impl From<Model> for ModelState {
     fn from(m: Model) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(m)),
+            inner: Mutex::new(m),
         }
     }
 }
 
-fn router() -> Router {
-    use gotham::pipeline::*;
-    use gotham::router::builder::*;
-
-    let state_middleware = StateMiddleware::new(ModelState::from(Model::new()));
-    let session_middleware = NewSessionMiddleware::default().with_session_type::<Option<Secret>>();
-
-    let pipeline = new_pipeline()
-        .add(state_middleware)
-        .add(session_middleware)
-        .build();
-    let (chain, pipelines) = single_pipeline(pipeline);
-
-    build_router(chain, pipelines, |route| {
-        // user web interface
-        route.get("/").to(SimpleHandler(index));
-        route.post("/").to(SimpleAsyncMutHandler(access_settings));
-        route.get("/settings").to(SimpleHandler(get_settings));
-        route
-            .post("/settings")
-            .to(SimpleAsyncMutHandler(post_settings));
-
-        // set-top-box api
-        route
-            .post("/stb/new-session")
-            .to(SimpleAsyncMutHandler(new_session));
-        route
-            .get("/stb/del-session")
-            .with_query_string_extractor::<SessionQuery>()
-            .to(SimpleHandler(end_session));
-        route
-            .get("/stb/poll")
-            .with_query_string_extractor::<PollQuery>()
-            .to(SimpleAsyncMutHandler(poll_session));
-    })
+/// Configure routes
+fn app_config(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::resource("/")
+            .route(web::get().to(index))
+            .route(web::post().to(access_settings)),
+    )
+    .service(
+        web::resource("/settings")
+            .route(web::get().to(get_settings))
+            .route(web::post().to(post_settings)),
+    )
+    .route("/stb/new-session", web::post().to(new_session))
+    .route("/stb/del-session", web::get().to(end_session))
+    .route("/stb/poll", web::get().to(poll_session));
 }
 
-fn main() {
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
     env_logger::init();
-    let addr = "127.0.0.1:7878";
-    println!("Listening for requests at http://{}", addr);
-    gotham::start(addr, router());
+    let addr = "127.0.0.1:8000";
+    println!("Starting web server at {}", addr);
+
+    // Global shared state varible
+    let state = web::Data::new(ModelState::from(Model::new()));
+
+    HttpServer::new(move || {
+        // Remember to update middleware configuration in tests
+        App::new()
+            .app_data(state.clone())
+            .wrap(middleware::Logger::default())
+            .wrap(CookieSession::signed(&[0; 32]).secure(false))
+            .configure(app_config)
+    })
+    .bind(addr)?
+    .run()
+    .await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cookie::Cookie;
-    use gotham::hyper::header::{COOKIE, SET_COOKIE};
-    use gotham::hyper::{Body, StatusCode};
-    use gotham::test::{TestResponse, TestServer};
-    use hyper::header;
+    use actix_http::httpmessage::HttpMessage;
+    use actix_web::http::{header, StatusCode};
+    use actix_web::test;
+    use actix_web::test::TestServer;
+    use config::{ConfigString, ConfigValue};
     use serde_json::Value;
-    use std::str;
+    use std::sync::Arc;
 
-    /// Short named alias
-    fn to_vec(json: Value) -> Vec<u8> {
-        serde_json::to_vec(&json).expect("serialized value")
+    fn build_test_server() -> TestServer {
+        env_logger::init();
+
+        let state = web::Data::new(ModelState::from(Model::new()));
+
+        test::start(move || {
+            App::new()
+                .app_data(state.clone())
+                .wrap(middleware::Logger::default())
+                .wrap(CookieSession::signed(&[0; 32]).secure(false))
+                .configure(app_config)
+        })
     }
 
-    // fn get_cookies(response: &TestResponse) -> Vec<Cookie> {
-    //     response
-    //         .headers()
-    //         .get_all(SET_COOKIE)
-    //         .iter()
-    //         .flat_map(|hv| hv.to_str().unwrap().parse::<Cookie>().unwrap())
-    //         .collect::<Vec<_>>()
-    // }
+    #[actix_rt::test]
+    async fn happy_workflow() {
+        let srv = Arc::new(build_test_server());
 
-    #[test]
-    fn happy() {
-        env_logger::init();
-        // println!(
-        //     "{}",
-        //     serde_json::to_string(&ConfigItem {
-        //         name: "cfg".to_string(),
-        //         title: "ABC".to_string(),
-        //         value: ConfigValue::String("qwerty".into())
-        //     })
-        //     .unwrap()
-        // );
-
-        let test_server = TestServer::new(router()).unwrap();
-        let client = test_server.client();
-
-        let response = client
-            .post(
-                "http://localhost/stb/new-session",
-                // Exaple json request
-                to_vec(json!([
-                    {
-                        "name": "a",
-                        "title": "TestA",
-                        "type": "string",
-                        "value": "qwerty",
-                    },
-                    {
-                        "name": "b",
-                        "title": "TestB",
-                        "type": "integer",
-                        "value": 33,
-                        "min": 0,
-                        "max": 100,
-                    },
-                    {
-                        "name": "c",
-                        "title": "TestC",
-                        "type": "selection",
-                        "value": "foo",
-                        "options": [
-                            {"value": "foo", "title": "Foo!" },
-                            {"value": "bar", "title": "Bar!" },
-                        ]
-                    },
-                    {
-                        "name": "d",
-                        "title": "TestD",
-                        "type": "bool",
-                        "value": true,
-                    },
-                ])),
-                mime::APPLICATION_JSON,
-            )
-            .perform()
+        // Stb sends configuration list to server
+        let mut res = srv
+            .post("/stb/new-session")
+            .send_json(&json!([
+                {
+                    "name": "a",
+                    "title": "TestA",
+                    "type": "string",
+                    "value": "qwerty",
+                },
+                {
+                    "name": "b",
+                    "title": "TestB",
+                    "type": "integer",
+                    "value": 33,
+                    "min": 0,
+                    "max": 100,
+                },
+                {
+                    "name": "c",
+                    "title": "TestC",
+                    "type": "selection",
+                    "value": "foo",
+                    "options": [
+                        {"value": "foo", "title": "Foo!" },
+                        {"value": "bar", "title": "Bar!" },
+                    ]
+                },
+                {
+                    "name": "d",
+                    "title": "TestD",
+                    "type": "bool",
+                    "value": true,
+                },
+            ]))
+            .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::OK);
-        let body = response.read_body().unwrap();
-        let result: Value = serde_json::from_slice(&body).expect("valid json");
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.body().await.unwrap();
+        // srv.load_body(res).await.unwrap();
+        let result = serde_json::from_slice::<Value>(&body).expect("valid json");
         assert!(result["key"].is_string());
         assert!(result["secret"].is_string());
 
-        // stb starts polling
-        let s1 = test_server.clone();
+        let key = result["key"].as_str().unwrap().to_owned();
         let secret = result["secret"].as_str().unwrap().to_owned();
-        let t = std::thread::spawn(move || {
-            use config::{ConfigString, ConfigValue};
-            use model::Values;
+        eprintln!("Created new session {}", secret);
 
-            let uri = format!("http://localhost/stb/poll?sid={}&revision={}", &secret, 0);
-            // let client = s1.client();
+        // Stb starts polling
+        let srv1 = srv.clone();
+        let (tx, rx) = futures::channel::oneshot::channel::<()>();
+
+        actix_rt::spawn(async move {
+            let uri = format!("/stb/poll?sid={}&revision={}", &secret, 0);
 
             // First reply returns revision=0 indicated that user has logged in
-            let response = s1.client().get(&uri).perform().unwrap();
-            assert_eq!(response.status(), StatusCode::OK);
-            let result = serde_json::from_slice::<Values>(&response.read_body().unwrap()).unwrap();
+            eprintln!("Poll...");
+            let mut res = srv1.get(&uri).send().await.unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+            let body = res.body().await.unwrap();
+            // let body = srv.load_body(res).await.unwrap();
+            let result = serde_json::from_slice::<model::Values>(&body).expect("valid json");
+
+            eprintln!("Got revision r{}", result.revision);
             assert_eq!(result.revision, 0);
             let a = result.values.iter().find(|v| v.name == "a").unwrap();
             assert!(
@@ -426,12 +359,15 @@ mod tests {
                     })
             );
 
-            return;
-
             // Future replies increment revision and give new values
-            let response = s1.client().get(&uri).perform().unwrap();
-            assert_eq!(response.status(), StatusCode::OK);
-            let result = serde_json::from_slice::<Values>(&response.read_body().unwrap()).unwrap();
+            eprintln!("Poll...");
+            let mut res = srv1.get(&uri).send().await.unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+            // let body = srv.load_body(res).await.unwrap();
+            let body = res.body().await.unwrap();
+            let result = serde_json::from_slice::<model::Values>(&body).expect("valid json");
+
+            eprintln!("Got revision r{}", result.revision);
             assert_eq!(result.revision, 1);
             let a = result.values.iter().find(|v| v.name == "a").unwrap();
             assert!(
@@ -440,62 +376,50 @@ mod tests {
                         value: "sometext".to_owned()
                     })
             );
+
+            // This routine is done
+            tx.send(()).unwrap();
         });
 
-        // Make sure that poll thread has started
-        use std::{thread, time::Duration};
-        thread::sleep(Duration::from_millis(100));
-
-        // Athorize user
-        eprintln!("Athorize user");
-        let response = client
-            .post(
-                "http://localhost/",
-                format!("code={}", result["key"].as_str().unwrap()),
-                mime::APPLICATION_WWW_FORM_URLENCODED,
-            )
-            .perform()
+        // Authorize user
+        let res = srv
+            .post("/")
+            .send_form(&AccessForm { code: key })
+            .await
             .unwrap();
-        eprintln!("Done");
-        assert_eq!(response.status(), StatusCode::FOUND);
-        assert_eq!(
-            response.headers().get(header::LOCATION).unwrap(),
-            "./settings"
-        );
-        let cookie = response.headers().get(SET_COOKIE).unwrap();
+        assert_eq!(res.status(), StatusCode::FOUND);
+        assert_eq!(res.headers().get(header::LOCATION).unwrap(), "./settings");
+
+        let cookies = res.cookies().unwrap();
+        let cookie = cookies
+            .iter()
+            .find(|c| c.name() == "actix-session")
+            .unwrap();
 
         // Follow redirect
-        eprintln!("redirect");
-        let response = client
-            .get("http://localhost/settings")
-            .with_header(COOKIE, cookie.to_owned())
-            .perform()
+        let mut res = srv
+            .get("/settings")
+            .cookie(cookie.to_owned())
+            .send()
+            .await
             .unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::OK);
+        eprintln!("Authorized and accessed settings");
+
+        let body = res.body().await.unwrap();
+        assert!(std::str::from_utf8(&body).unwrap().find("qwerty").is_some());
 
         // Post new values
-        eprintln!("Post new values");
-        let response = client
-            .post(
-                "http://localhost/settings",
-                "a=sometext",
-                mime::APPLICATION_WWW_FORM_URLENCODED,
-            )
-            .with_header(COOKIE, cookie.to_owned())
-            .perform()
+        let res = srv
+            .post("/settings")
+            .cookie(cookie.to_owned())
+            .send_body("a=sometext")
+            .await
             .unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::OK);
+        eprintln!("Posted new valued");
 
-        t.join().unwrap();
-
-        // stb obtained new values and ends session
-        let response = client
-            .get(format!(
-                "http://localhost/stb/del-session?sid={}",
-                result["secret"].as_str().unwrap()
-            ))
-            .perform()
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
+        // Wait for Stb to poll all changes
+        rx.await.unwrap();
     }
 }

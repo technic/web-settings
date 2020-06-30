@@ -2,14 +2,11 @@
 use super::config::ConfigItem;
 use futures::future;
 use futures::future::BoxFuture;
-use futures::prelude::*;
 use futures_util::future::FutureExt;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
-// FIXME: this is not good dependency practice
-use gotham_derive::StateData;
 
-#[derive(Clone, PartialEq, Eq, Hash, Deserialize, Serialize, StateData)]
+#[derive(Clone, PartialEq, Eq, Hash, Deserialize, Serialize, Debug)]
 pub struct Secret(String);
 
 impl ToString for Secret {
