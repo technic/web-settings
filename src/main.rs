@@ -1,6 +1,8 @@
 use actix_session::{CookieSession, Session};
 /// Web/json interface to access settings
-use actix_web::{error, http, middleware, web, App, Error, HttpResponse, HttpServer, Responder};
+use actix_web::{
+    error, http, middleware, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
+};
 
 use lazy_static::lazy_static;
 use mime;
@@ -65,10 +67,25 @@ fn redirect(location: &str) -> HttpResponse {
         .finish()
 }
 
+#[derive(Deserialize)]
+struct CodeQuery {
+    c: Option<String>,
+}
+
 /// Index page that asks user for one-time code
-async fn index() -> impl Responder {
-    let context = Context::new();
-    render_html("pages/index.html", &context)
+/// or redirects directly to the settings page if code is provided in query parameters
+async fn index(
+    model: web::Data<ModelState>,
+    session: Session,
+    query: web::Query<CodeQuery>,
+) -> impl Responder {
+    match query.into_inner().c {
+        Some(code) => access_settings(model, session, web::Form(AccessForm { code })).await,
+        None => {
+            let context = Context::new();
+            render_html("pages/index.html", &context)
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -146,7 +163,9 @@ async fn post_settings(
     };
     match result {
         Ok(_) => render_html("pages/submitted.html", &Context::new()),
-        Err(msg) => Ok(HttpResponse::BadRequest().content_type("text/html").body(msg)),
+        Err(msg) => Ok(HttpResponse::BadRequest()
+            .content_type("text/html")
+            .body(msg)),
     }
 }
 
