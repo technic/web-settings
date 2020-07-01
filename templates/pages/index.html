@@ -17,11 +17,6 @@
           <div class="alert alert-danger fade show" role="alert">
             {{error}}
           </div>
-          <script type="text/javascript">
-            $(document).ready(function () {
-              setTimeout(function () { $(".alert").fadeOut("slow") }, 3000);
-            })
-          </script>
           {% endif %}
 
           <div class="form-group">
@@ -34,4 +29,12 @@
     </div>
   </div>
 </div>
+{% endblock -%}
+
+{%- block scripts %}
+<script type="text/javascript">
+  $(document).ready(function () {
+    setTimeout(function () { $(".alert").fadeOut("slow") }, 3000);
+  })
+</script>
 {% endblock -%}
