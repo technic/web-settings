@@ -35,7 +35,7 @@
             <label for="{{item.name}}">{{item.title}}</label>
             <select class="form-control" name="{{item.name}}" id="{{item.name}}">
               {% for opt in item.options %}
-              <option value="{{opt.value}}">{{opt.title}}</option>
+              <option value="{{opt.value}}" {% if item.value == opt.value %} selected {% endif %} >{{opt.title}}</option>
               {% endfor %}
             </select>
           </div>
@@ -44,7 +44,7 @@
           {% if item.type == 'bool' %}
           <div class="form-group">
             <div class="form-check">
-              <input type="checkbox" value="{{item.value}}" class="form-check-input" name="{{item.name}}" id="{{item.name}}">
+              <input type="checkbox" {% if item.value %} checked {% endif %} class="form-check-input" name="{{item.name}}" id="{{item.name}}">
               <label class="form-check-label" for="{{item.name}}">{{item.title}}</label>
             </div>
           </div>

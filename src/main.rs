@@ -146,7 +146,7 @@ async fn post_settings(
     };
     match result {
         Ok(_) => render_html("pages/submitted.html", &Context::new()),
-        Err(_) => Ok(HttpResponse::Ok().content_type("text/html").body("qqq")),
+        Err(msg) => Ok(HttpResponse::BadRequest().content_type("text/html").body(msg)),
     }
 }
 

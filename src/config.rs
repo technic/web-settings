@@ -59,13 +59,17 @@ impl ConfigValue {
                     false
                 }
             }
-            ConfigValue::Bool(conf) => match s.parse::<bool>() {
-                Ok(b) => {
-                    conf.value = b;
-                    true
+            ConfigValue::Bool(conf) => {
+                match s {
+                    "on" => {
+                        conf.value = true;
+                    }
+                    _ => {
+                        conf.value = false;
+                    }
                 }
-                Err(_) => false,
-            },
+                true
+            }
         }
     }
 }

@@ -281,7 +281,9 @@ impl Model {
                         return Err("bad value");
                     }
                 }
-                None => {}
+                None => {
+                    s.value.try_set_value("");
+                }
             }
         }
         client.update_rev();
