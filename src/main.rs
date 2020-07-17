@@ -31,11 +31,19 @@ lazy_static! {
 }
 
 fn render(template_name: &str, context: &Context) -> tera::Result<String> {
+    fn trace_error(e: tera::Error) -> tera::Error {
+        if let Some(s) = e.source() {
+            eprintln!("Tera error: {} ({})", e, s);
+        } else {
+            eprintln!("Tera error: {} (None)", e);
+        }
+        e
+    }
+
     // FIXME: Only in debug build
     let mut t = TERA.lock().unwrap();
     t.full_reload().unwrap();
-    t.render(template_name, context)
-    // .map(|body| (mime::TEXT_HTML, body))
+    t.render(template_name, context).map_err(trace_error)
 }
 
 fn render_html(template_name: &str, context: &Context) -> Result<HttpResponse, Error> {
