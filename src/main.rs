@@ -101,7 +101,7 @@ struct AccessForm {
     code: String,
 }
 
-/// Provides access to settigns after code verification
+/// Provides access to settings after code verification
 async fn access_settings(
     model: web::Data<ModelState>,
     session: Session,
@@ -291,7 +291,7 @@ async fn main() -> std::io::Result<()> {
     let addr = format!("127.0.0.1:{}", port);
     println!("Starting web server at {}", addr);
 
-    // Global shared state varible
+    // Global shared state variable
     let state = web::Data::new(ModelState::from(Model::new()));
 
     HttpServer::new(move || {
