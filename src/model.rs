@@ -164,7 +164,9 @@ impl<T> KeyStorage<T> {
         }
     }
 
-    fn cleanup(&mut self) {}
+    fn cleanup(&mut self) {
+        // TODO: remove all expired keys
+    }
 
     fn random_key(&mut self) -> String {
         // FIXME: This is short, is it a security fault?
