@@ -191,7 +191,7 @@ async fn new_session(
 
 #[derive(Deserialize)]
 struct SessionQuery {
-    sid: String,
+    sid: Secret,
 }
 
 /// End point for device to cancel web interface settings session
@@ -212,7 +212,7 @@ async fn end_session(
 
 #[derive(Deserialize)]
 struct PollQuery {
-    sid: String,
+    sid: Secret,
     revision: u32,
 }
 

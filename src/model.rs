@@ -212,10 +212,9 @@ impl Model {
         panic!("Failed to create unique secret")
     }
 
-    pub fn remove_client(&mut self, sid: &str) -> Result<(), &'static str> {
-        // FIXME: create &Secret from &str
+    pub fn remove_client(&mut self, sid: &Secret) -> Result<(), &'static str> {
         self.clients
-            .remove(&Secret(sid.to_owned()))
+            .remove(sid)
             .map(|_| ())
             .ok_or("session does not exists")
     }
@@ -223,8 +222,8 @@ impl Model {
     /// Returns a Future that waits for values to be updated
     /// Previous sender (if any) will be drop,
     /// so previous futures returned from this method are going to resolve with error
-    pub fn values(&mut self, sid: &str, revision: u32) -> BoxFuture<'static, Message> {
-        let client = self.clients.get_mut(&Secret(sid.to_owned())).ok_or(());
+    pub fn values(&mut self, sid: &Secret, revision: u32) -> BoxFuture<'static, Message> {
+        let client = self.clients.get_mut(sid).ok_or(());
         let client = match client {
             Ok(c) => c,
             Err(_) => return future::err(()).boxed(),
