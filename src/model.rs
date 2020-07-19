@@ -191,8 +191,8 @@ impl Model {
         }
     }
 
-    /// Creates new clinet with given settings
-    /// and returs single time access key
+    /// Creates new client with given settings
+    /// and returns single time access key
     pub fn new_client(&mut self, settings: Vec<ConfigItem>) -> (String, Secret) {
         use std::collections::hash_map::Entry;
         for _ in 0..10 {
