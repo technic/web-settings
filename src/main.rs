@@ -9,8 +9,8 @@ use mime;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
-use std::sync::Mutex;
 use std::error::Error as StdError;
+use std::sync::Mutex;
 
 use tera::{Context, Tera};
 use url::form_urlencoded;
