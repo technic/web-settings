@@ -429,6 +429,15 @@ mod tests {
                     })
             );
 
+            // After Stb got updated values it usually deletes session
+            eprintln!("End session");
+            let mut res = srv1
+                .get(format!("/stb/del-session?sid={}", &secret))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+
             // This routine is done
             tx.send(()).unwrap();
         });
