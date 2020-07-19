@@ -57,7 +57,7 @@ impl Client {
         self.send_message(Ok(self.current_values()));
     }
 
-    fn get_reciver(&mut self) -> Receiver<Message> {
+    fn get_receiver(&mut self) -> Receiver<Message> {
         self.send_err();
         let (sender, receiver) = oneshot::channel::<Message>();
         self.sender = Some(sender);
@@ -235,7 +235,7 @@ impl Model {
                     return future::err(()).boxed();
                 }
                 // recreate communication channel and wait for login
-                let f = client.get_reciver().map(|res| res.unwrap_or(Err(())));
+                let f = client.get_receiver().map(|res| res.unwrap_or(Err(())));
                 return Box::pin(f);
             }
             ClientSt::Submitted(current_rev) => {
@@ -244,7 +244,7 @@ impl Model {
                     return future::ok(client.current_values()).boxed();
                 } else if revision == current_rev {
                     // recreate communication channel and wait for new values
-                    let f = client.get_reciver().map(|res| res.unwrap_or(Err(())));
+                    let f = client.get_receiver().map(|res| res.unwrap_or(Err(())));
                     return Box::pin(f);
                 } else {
                     // must never happen
