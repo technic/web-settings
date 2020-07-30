@@ -1,0 +1,11 @@
+enter-code = Enter code displayed by your Set-Top-Box
+next-button = Next
+submit-button = Submit
+success-header = Success
+submitted-message = Setting are being sent to the box
+edit-button = Edit
+error-header = Error
+invalid-key = Invalid code
+key-expired = Key expired
+invalid-session = Invalid session
+session-expired = Session expired

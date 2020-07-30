@@ -15,16 +15,16 @@
 
           {% if error %}
           <div class="alert alert-danger fade show" role="alert">
-            {{error}}
+            {{ fluent(key=error) }}
           </div>
           {% endif %}
 
           <div class="form-group">
-            <label for="code">Enter code displayed by your Set-Top-Box</label>
+            <label for="code">{{ fluent(key="enter-code") }}</label>
             <input type="text" class="form-control" name="code" id="code" maxlength="10" placeholder="" autofocus>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary float-right">Next</button>
+        <button type="submit" class="btn btn-primary float-right">{{ fluent(key="next-button") }}</button>
       </form>
     </div>
   </div>

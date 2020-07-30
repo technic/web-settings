@@ -1,9 +1,12 @@
-use actix_session::{CookieSession, Session};
 /// Web/json interface to access settings
+use actix_session::{CookieSession, Session};
 use actix_web::{
-    error, http, middleware, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
+    error, http, middleware, web, App, Error, FromRequest, HttpRequest, HttpResponse, HttpServer,
+    Responder,
 };
 
+use core::ops::Deref;
+use futures::prelude::*;
 use lazy_static::lazy_static;
 use mime;
 use serde::{Deserialize, Serialize};
@@ -12,6 +15,7 @@ use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::sync::Mutex;
 
+use fluent_templates::{fs::LanguageIdentifier, static_loader, FluentLoader, Loader};
 use tera::{Context, Tera};
 use url::form_urlencoded;
 
@@ -21,17 +25,75 @@ use crate::config::ConfigItem;
 mod model;
 use crate::model::Model;
 use crate::model::Secret;
+use actix_http::Payload;
+
+// Localization
+
+/// Language to use when user did not specify any, or translation is not available at all
+static DEFAULT_LANGUAGE: &str = "en-US";
+
+static_loader! {
+    // Declare our `StaticLoader` named `LOCALES`.
+    static LOCALES = {
+        // The directory of localizations and fluent resources.
+        locales: "./locales",
+        // The language to fallback on if something is not present.
+        fallback_language: "en-US",
+        // Optional: A fluent resource that is shared with every locale.
+        // core_locales: "./locales/core.ftl",
+    };
+}
 
 // Assuming the Rust file is at the same level as the templates folder
 // we can get a Tera instance that way:
 lazy_static! {
     // Debug only
     pub static ref TERA: Mutex<Tera> = Mutex::new(Tera::new("templates/**/*.html").unwrap());
-    // TODO: Relese
+    // TODO: Release
     // pub static ref TERA: Tera = Tera::new("templates/**/*.html").unwrap();
 }
 
-fn render(template_name: &str, context: &Context) -> tera::Result<String> {
+struct Langs(Vec<LanguageIdentifier>);
+
+impl AsRef<[LanguageIdentifier]> for Langs {
+    fn as_ref(&self) -> &[LanguageIdentifier] {
+        &self.0
+    }
+}
+
+impl From<Vec<LanguageIdentifier>> for Langs {
+    fn from(inner: Vec<LanguageIdentifier>) -> Self {
+        Self(inner)
+    }
+}
+
+impl FromRequest for Langs {
+    type Error = actix_web::Error;
+    type Future = future::Ready<Result<Self, Self::Error>>;
+    type Config = ();
+
+    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+        let langs = req
+            .headers()
+            .get(http::header::ACCEPT_LANGUAGE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or(DEFAULT_LANGUAGE)
+            .split(',')
+            .filter_map(|lang| {
+                lang.split(';')
+                    .nth(0)
+                    .and_then(|s| s.trim().parse::<LanguageIdentifier>().ok())
+            })
+            .collect::<Vec<_>>();
+        future::ok(langs.into())
+    }
+}
+
+fn render(
+    template_name: &str,
+    context: &Context,
+    langs: &[LanguageIdentifier],
+) -> tera::Result<String> {
     fn trace_error(e: tera::Error) -> tera::Error {
         if let Some(s) = e.source() {
             eprintln!("Tera error: {} ({})", e, s);
@@ -44,11 +106,29 @@ fn render(template_name: &str, context: &Context) -> tera::Result<String> {
     // FIXME: Only in debug build
     let mut t = TERA.lock().unwrap();
     t.full_reload().unwrap();
+
+    let default_lang = DEFAULT_LANGUAGE.parse().unwrap();
+    let requested_lang = langs.first().unwrap_or(&default_lang);
+
+    let lang = LOCALES
+        .locales()
+        .find(|&l| l == requested_lang)
+        .map(|l| l.clone())
+        .unwrap_or(default_lang);
+
+    t.register_function(
+        "fluent",
+        FluentLoader::new(LOCALES.deref()).with_default_lang(lang),
+    );
     t.render(template_name, context).map_err(trace_error)
 }
 
-fn render_html(template_name: &str, context: &Context) -> Result<HttpResponse, Error> {
-    render(template_name, context)
+fn render_html(
+    template_name: &str,
+    context: &Context,
+    langs: &[LanguageIdentifier],
+) -> Result<HttpResponse, Error> {
+    render(template_name, context, langs)
         .map(|b| {
             HttpResponse::Ok()
                 .content_type(mime::TEXT_HTML.as_ref())
@@ -87,12 +167,13 @@ async fn index(
     model: web::Data<ModelState>,
     session: Session,
     query: web::Query<CodeQuery>,
+    langs: Langs,
 ) -> impl Responder {
     match query.into_inner().c {
-        Some(code) => access_settings(model, session, web::Form(AccessForm { code })).await,
+        Some(code) => access_settings(model, session, web::Form(AccessForm { code }), langs).await,
         None => {
             let context = Context::new();
-            render_html("pages/index.html", &context)
+            render_html("pages/index.html", &context, langs.as_ref())
         }
     }
 }
@@ -107,6 +188,7 @@ async fn access_settings(
     model: web::Data<ModelState>,
     session: Session,
     form: web::Form<AccessForm>,
+    langs: Langs,
 ) -> Result<HttpResponse, Error> {
     let secret = {
         let mut m = model.inner.lock().unwrap();
@@ -120,7 +202,7 @@ async fn access_settings(
         Err(message) => {
             let mut ctx = Context::new();
             ctx.insert("error", message);
-            render_html("pages/index.html", &ctx)
+            render_html("pages/index.html", &ctx, langs.as_ref())
         }
     }
 }
@@ -129,6 +211,7 @@ async fn access_settings(
 async fn get_settings(
     model: web::Data<ModelState>,
     session: Session,
+    langs: Langs,
 ) -> Result<HttpResponse, Error> {
     let secret_opt = session.get::<Secret>(SESSION_SECRET)?;
     secret_opt
@@ -143,7 +226,7 @@ async fn get_settings(
                 Ok(config) => {
                     let ctx = Context::from_value(json!({ "config": config }))
                         .map_err(error::ErrorInternalServerError)?;
-                    render_html("pages/settings.html", &ctx)
+                    render_html("pages/settings.html", &ctx, langs.as_ref())
                 }
                 // TODO: Flash message
                 Err(_) => Ok(redirect("./")),
@@ -157,6 +240,7 @@ async fn post_settings(
     model: web::Data<ModelState>,
     session: Session,
     body: web::Bytes,
+    langs: Langs,
 ) -> Result<HttpResponse, Error> {
     let secret: Secret = match session.get::<Secret>(SESSION_SECRET)? {
         Some(s) => s.to_owned(),
@@ -171,7 +255,7 @@ async fn post_settings(
         m.update_settings(&secret, values)
     };
     match result {
-        Ok(_) => render_html("pages/submitted.html", &Context::new()),
+        Ok(_) => render_html("pages/submitted.html", &Context::new(), langs.as_ref()),
         Err(msg) => Ok(HttpResponse::BadRequest()
             .content_type("text/html")
             .body(msg)),

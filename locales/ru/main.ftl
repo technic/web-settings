@@ -1,0 +1,11 @@
+enter-code = Введите код показанный на экране телевизора
+next-button = Далее
+submit-button = Применить
+success-header = Сохранено
+submitted-message = Настройки отправляются на устройство
+edit-button = Изменить
+error-header = Ошибка
+invalid-key = Неправильный код
+key-expired = Ключ устарел
+invalid-session = Сессия не существует
+session-expired = Сессия устарела

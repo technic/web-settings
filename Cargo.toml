@@ -26,6 +26,7 @@ url = "2.1"
 rand_chacha = "0.2"
 base64 = "0.12"
 env_logger = "0.7"
+fluent-templates = { version = "0.5", features = ["tera"] }
 
 [dev-dependencies]
 cookie = "0.14"

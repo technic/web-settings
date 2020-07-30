@@ -157,10 +157,10 @@ impl<T> KeyStorage<T> {
                 if t - v.timestamp < self.expiration as u64 {
                     Ok(v.data)
                 } else {
-                    Err("Key expired")
+                    Err("key-expired")
                 }
             }
-            None => Err("Invalid key"),
+            None => Err("invalid-key"),
         }
     }
 
@@ -256,7 +256,7 @@ impl Model {
 
     pub fn auth(&mut self, key: &str) -> Result<Secret, &'static str> {
         let secret = self.keys.take_data(key)?;
-        let client = self.clients.get_mut(&secret).ok_or("Session_expired")?;
+        let client = self.clients.get_mut(&secret).ok_or("session-expired")?;
         client.send();
         Ok(secret)
     }
@@ -265,7 +265,7 @@ impl Model {
         self.clients
             .get(s)
             .map(|c| &c.settings)
-            .ok_or("invalid session")
+            .ok_or("invalid-session")
     }
 
     pub fn update_settings(
@@ -273,7 +273,7 @@ impl Model {
         s: &Secret,
         values: HashMap<String, String>,
     ) -> Result<(), &'static str> {
-        let client = self.clients.get_mut(s).ok_or("invalid session")?;
+        let client = self.clients.get_mut(s).ok_or("invalid-session")?;
 
         for s in client.settings.iter_mut() {
             match values.get(&s.name) {

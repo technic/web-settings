@@ -28,6 +28,7 @@ jobs:
             mkdir dist
             cp -a ./target/release/web-settings dist/app
             cp -a ./templates dist
+            cp -a ./locales dist
       - persist_to_workspace:
           root: .
           paths:
