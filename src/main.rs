@@ -515,7 +515,7 @@ mod tests {
 
             // After Stb got updated values it usually deletes session
             eprintln!("End session");
-            let mut res = srv1
+            let res = srv1
                 .get(format!("/stb/del-session?sid={}", &secret))
                 .send()
                 .await
