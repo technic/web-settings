@@ -84,8 +84,8 @@ workflows:
             branches:
               only:
                 - master
-      # - mirror:
-      #     filters:
-      #       branches:
-      #         only:
-      #           - master
+      - mirror:
+          filters:
+            branches:
+              only:
+                - master
