@@ -65,7 +65,7 @@ jobs:
       - checkout
       - add_ssh_keys:
           fingerprints:
-            - "19:db:1c:7a:53:a2:a6:7f:c4:3b:9b:57:de:5a:ee:d6"
+            - "a4:82:0f:88:bb:e5:c3:48:1b:84:a0:6a:7d:03:fe:2f"
       - run:
           name: GitHub mirror
           command: |
