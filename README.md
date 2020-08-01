@@ -1,5 +1,7 @@
 [![CircleCI](https://circleci.com/bb/iptvdream/web-settings.svg?style=svg)](https://circleci.com/bb/iptvdream/web-settings)
 
+# Web Settings
+
 Server which provides web interface for editing settings in the Set-Top-Box or
 some IoT devices.
 This repository has only the server side implementation.
