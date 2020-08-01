@@ -105,7 +105,9 @@ fn render(
 
     // FIXME: Only in debug build
     let mut t = TERA.lock().unwrap();
-    t.full_reload().unwrap();
+    if cfg!(debug_assertions) {
+        t.full_reload().unwrap();
+    }
 
     let default_lang = DEFAULT_LANGUAGE.parse().unwrap();
     let requested_lang = langs.first().unwrap_or(&default_lang);
