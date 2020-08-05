@@ -4,11 +4,13 @@
 {% endblock %}
 
 {%- block content %}
+<div class="container">
 <div class="row text-center">
   <div class="mx-auto mt-4">
     <h2 class="text-success">{{ fluent(key="success-header") }}</h2>
     <p>{{ fluent(key="submitted-message") }}</p>
     <a href="./settings">{{ fluent(key="edit-button") }}</a>
   </div>
+</div>
 </div>
 {% endblock -%}

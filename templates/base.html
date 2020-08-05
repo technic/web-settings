@@ -4,20 +4,79 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-    integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+    integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/fontawesome.min.css"
+    integrity="sha512-8jdwayz5n8F2cnW26l9vpV6+yGOcRAqz6HTu+DQ3FtVIAts2gTdlFZOGpYhvBMXkWEgxPN3Y22UWyZXuDowNLA=="
+    crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/solid.min.css"
+    integrity="sha512-QN7X/bUbbeel9bbq6JVNJXk1Zowt+n+QPN+DjhEmTa4TdL1YPCsCey5JrvfRW8xp28LDYgGG/waNVdrhwMQmVQ=="
+    crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/brands.min.css"
+    integrity="sha512-AMDXrE+qaoUHsd0DXQJr5dL4m5xmpkGLxXZQik2TvR2VCVKT/XRPQ4e/LTnwl84mCv+eFm92UG6ErWDtGM/Q5Q=="
+    crossorigin="anonymous" />
   <style>
+    html {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
     .code-text {
       font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
       font-size: large;
+    }
+
+    .footer {
+      color: #999c9f;
+    }
+
+    .footer a {
+      color: #999c9f;
+    }
+
+    .footer a:hover {
+      color: #eaebeb;
     }
   </style>
   {% block head %} {% endblock %}
 </head>
 
-<body>
-  <div class="container">
+<body class="d-flex flex-column min-vh-100">
+  <main class="d-flex flex-grow-1">
     {%- block content -%}{% endblock %}
+  </main>
+  <footer class="bg-dark pt-3 pb-2 footer">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4 small">
+          <h5>IPtvDream 4X</h5>
+          <p>
+            Web interface for enigma2 iptv plugin settings.
+          </p>
+        </div>
+        <div class="col-md-4">
+          <h5>Links</h5>
+          <ul class="list-inline small">
+            <li class="list-inline-item"><a href="#"><i class="fas fa-bullhorn"></i> News</a></li>
+            <li class="list-inline-item"><a href="#"><i class="fab fa-telegram"></i> Telegram</a></li>
+            <li class="list-inline-item"><a href="#"><i class="fas fa-comments"></i> Forum</a></li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h5>Open Source</h5>
+          <ul class="list-inline small">
+            <li class="list-inline-item"><a href="https://github.com/technic/iptvdream4x">Plugin</a></li>
+            <li class="list-inline-item"><a href="https://github.com/technic/web-settings">Web Settings</a></li>
+            <li class="list-inline-item"><a href="https://github.com/technic/epg-server">EPG Server</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </footer>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"
     integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
