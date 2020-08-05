@@ -1,10 +1,10 @@
 /// Web/json interface to access settings
+use actix_http::Payload;
 use actix_session::{CookieSession, Session};
 use actix_web::{
     error, http, middleware, web, App, Error, FromRequest, HttpRequest, HttpResponse, HttpServer,
     Responder,
 };
-use actix_http::Payload;
 
 use core::ops::Deref;
 use futures::prelude::*;
@@ -27,31 +27,11 @@ mod model;
 use crate::model::Model;
 use crate::model::Secret;
 
-// Localization
+mod views;
+use crate::views::{IndexPage, Page, SettingsPage, SubmittedPage, LOCALES, TERA};
 
 /// Language to use when user did not specify any, or translation is not available at all
 static DEFAULT_LANGUAGE: &str = "en-US";
-
-static_loader! {
-    // Declare our `StaticLoader` named `LOCALES`.
-    static LOCALES = {
-        // The directory of localizations and fluent resources.
-        locales: "./locales",
-        // The language to fallback on if something is not present.
-        fallback_language: "en-US",
-        // Optional: A fluent resource that is shared with every locale.
-        // core_locales: "./locales/core.ftl",
-    };
-}
-
-// Assuming the Rust file is at the same level as the templates folder
-// we can get a Tera instance that way:
-lazy_static! {
-    // Debug only
-    pub static ref TERA: Mutex<Tera> = Mutex::new(Tera::new("templates/**/*.html").unwrap());
-    // TODO: Release
-    // pub static ref TERA: Tera = Tera::new("templates/**/*.html").unwrap();
-}
 
 struct Langs(Vec<LanguageIdentifier>);
 
@@ -125,12 +105,12 @@ fn render(
     t.render(template_name, context).map_err(trace_error)
 }
 
-fn render_html(
-    template_name: &str,
-    context: &Context,
-    langs: &[LanguageIdentifier],
-) -> Result<HttpResponse, Error> {
-    render(template_name, context, langs)
+fn render_page<T>(data: T, langs: &[LanguageIdentifier]) -> Result<HttpResponse, Error>
+where
+    T: Page + Serialize,
+{
+    let ctx = Context::from_serialize(data).map_err(error::ErrorInternalServerError)?;
+    render(T::TEMPLATE_NAME, &ctx, langs)
         .map(|b| {
             HttpResponse::Ok()
                 .content_type(mime::TEXT_HTML.as_ref())
@@ -173,10 +153,7 @@ async fn index(
 ) -> impl Responder {
     match query.into_inner().c {
         Some(code) => access_settings(model, session, web::Form(AccessForm { code }), langs).await,
-        None => {
-            let context = Context::new();
-            render_html("pages/index.html", &context, langs.as_ref())
-        }
+        None => render_page(IndexPage { error: None }, langs.as_ref()),
     }
 }
 
@@ -201,11 +178,12 @@ async fn access_settings(
             session.set(SESSION_SECRET, secret)?;
             Ok(redirect("./settings"))
         }
-        Err(message) => {
-            let mut ctx = Context::new();
-            ctx.insert("error", message);
-            render_html("pages/index.html", &ctx, langs.as_ref())
-        }
+        Err(message) => render_page(
+            IndexPage {
+                error: Some(&message),
+            },
+            langs.as_ref(),
+        ),
     }
 }
 
@@ -226,9 +204,7 @@ async fn get_settings(
             };
             match config_opt {
                 Ok(config) => {
-                    let ctx = Context::from_value(json!({ "config": config }))
-                        .map_err(error::ErrorInternalServerError)?;
-                    render_html("pages/settings.html", &ctx, langs.as_ref())
+                    render_page(SettingsPage { config: config }, langs.as_ref())
                 }
                 // TODO: Flash message
                 Err(_) => Ok(redirect("./")),
@@ -257,7 +233,7 @@ async fn post_settings(
         m.update_settings(&secret, values)
     };
     match result {
-        Ok(_) => render_html("pages/submitted.html", &Context::new(), langs.as_ref()),
+        Ok(_) => render_page(SubmittedPage {}, langs.as_ref()),
         Err(msg) => Ok(HttpResponse::BadRequest()
             .content_type("text/html")
             .body(msg)),

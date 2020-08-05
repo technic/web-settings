@@ -1,9 +1,11 @@
 use actix_web::{error, middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use fluent_templates::FluentLoader;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::Write;
+use std::ops::Deref;
 use tera::Context;
-use web_settings::views::{ErrorPage, IndexPage, Page, SettingsPage, SubmittedPage, TERA};
+use web_settings::views::{ErrorPage, IndexPage, Page, SettingsPage, SubmittedPage, LOCALES, TERA};
 
 type PagesData = HashMap<&'static str, Box<Context>>;
 
@@ -19,16 +21,21 @@ async fn main() -> std::io::Result<()> {
         box_page::<ErrorPage>(),
     ];
 
-    println!(
-        "Known tera templates: {:?}",
-        TERA.templates.keys().collect::<Vec<_>>()
-    );
-    println!(
-        "Mocked pages: {:?}",
-        TERA.templates.keys().collect::<Vec<_>>()
-    );
+    {
+        let mut t = TERA.lock().unwrap();
+        t.register_function(
+            "fluent",
+            FluentLoader::new(LOCALES.deref()).with_default_lang("en".parse().unwrap()),
+        );
+        println!(
+            "Known tera templates: {:?}",
+            t.templates.keys().collect::<Vec<_>>()
+        );
+    }
 
     let pages_hash: PagesData = pages.into_iter().collect();
+    println!("Mocked pages: {:?}", pages_hash.keys().collect::<Vec<_>>());
+
     let addr = format!("127.0.0.1:8000");
     println!("Starting web server at {}", addr);
 
@@ -63,7 +70,9 @@ async fn list_pages(pages: web::Data<PagesData>) -> impl Responder {
 async fn get_page(req: HttpRequest, pages: web::Data<PagesData>) -> impl Responder {
     let template = &req.path()[1..];
     let context = pages.get(template).unwrap();
-    TERA.render(template, &context)
+    TERA.lock()
+        .unwrap()
+        .render(template, &context)
         .map(|b| {
             HttpResponse::Ok()
                 .content_type(mime::TEXT_HTML.as_ref())

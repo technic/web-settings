@@ -3,26 +3,30 @@ use fluent_templates::{static_loader, FluentLoader};
 use lazy_static::lazy_static;
 use serde::Serialize;
 use tera::Tera;
+use std::ops::Deref;
+use std::sync::Mutex;
 
 pub trait Page {
     const TEMPLATE_NAME: &'static str;
     fn mock() -> Self;
 }
 
+// Tera templates
+
+// Assuming the Rust file is at the same level as the templates folder
+// we can get a Tera instance that way:
 lazy_static! {
-    pub static ref TERA: Tera = {
-        let mut tera = Tera::new("templates/**/*.html").unwrap();
-        tera.register_function(
-            "fluent",
-            FluentLoader::new(LOCALES.deref()).with_default_lang("en".parse().unwrap()),
-        );
-        tera
-    };
+    // Debug only
+    pub static ref TERA: Mutex<Tera> = Mutex::new(Tera::new("templates/**/*.html").unwrap());
+    // TODO: Release
+    // pub static ref TERA: Tera = Tera::new("templates/**/*.html").unwrap();
 }
+
+// Localization
 
 static_loader! {
     // Declare our `StaticLoader` named `LOCALES`.
-    static LOCALES = {
+    pub static LOCALES = {
         // The directory of localizations and fluent resources.
         locales: "./locales",
         // The language to fallback on if something is not present.
@@ -32,11 +36,18 @@ static_loader! {
     };
 }
 
+// Testing
+
 #[cfg(test)]
 fn mock_render<T: Serialize + Page>(data: T) {
     use tera::Context;
     let ctx = Context::from_serialize(data).unwrap();
-    TERA.render(T::TEMPLATE_NAME, &ctx).unwrap();
+    let mut t = TERA.lock().unwrap();
+    t.register_function(
+        "fluent",
+        FluentLoader::new(LOCALES.deref()).with_default_lang("en".parse().unwrap()),
+    );
+    t.render(T::TEMPLATE_NAME, &ctx).unwrap();
 }
 
 macro_rules! test_page {
@@ -51,6 +62,7 @@ macro_rules! test_page {
     };
 }
 
+// Pages
 
 #[derive(Serialize)]
 pub struct IndexPage<'a> {
@@ -69,7 +81,7 @@ test_page!(IndexPage);
 
 #[derive(Serialize)]
 pub struct SettingsPage {
-    config: Vec<ConfigItem>,
+    pub config: Vec<ConfigItem>,
 }
 impl Page for SettingsPage {
     const TEMPLATE_NAME: &'static str = "pages/settings.html";
