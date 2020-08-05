@@ -203,9 +203,7 @@ async fn get_settings(
                 s
             };
             match config_opt {
-                Ok(config) => {
-                    render_page(SettingsPage { config: config }, langs.as_ref())
-                }
+                Ok(config) => render_page(SettingsPage { config }, langs.as_ref()),
                 // TODO: Flash message
                 Err(_) => Ok(redirect("./")),
             }
