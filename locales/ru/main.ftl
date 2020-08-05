@@ -1,3 +1,4 @@
+iptvdream4x-header = IPtvDream 4X вэб настройки
 enter-code = Введите код показанный на экране телевизора
 next-button = Далее
 submit-button = Применить

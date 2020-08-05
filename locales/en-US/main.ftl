@@ -1,3 +1,4 @@
+iptvdream4x-header = IPtvDream 4X web settings
 enter-code = Enter code displayed by your Set-Top-Box
 next-button = Next
 submit-button = Submit
