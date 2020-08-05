@@ -70,9 +70,9 @@ async fn list_pages(pages: web::Data<PagesData>) -> impl Responder {
 async fn get_page(req: HttpRequest, pages: web::Data<PagesData>) -> impl Responder {
     let template = &req.path()[1..];
     let context = pages.get(template).unwrap();
-    TERA.lock()
-        .unwrap()
-        .render(template, &context)
+    let mut t = TERA.lock().unwrap();
+    t.full_reload().unwrap();
+    t.render(template, &context)
         .map(|b| {
             HttpResponse::Ok()
                 .content_type(mime::TEXT_HTML.as_ref())
