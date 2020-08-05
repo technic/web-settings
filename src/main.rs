@@ -4,6 +4,7 @@ use actix_web::{
     error, http, middleware, web, App, Error, FromRequest, HttpRequest, HttpResponse, HttpServer,
     Responder,
 };
+use actix_http::Payload;
 
 use core::ops::Deref;
 use futures::prelude::*;
@@ -25,7 +26,6 @@ use crate::config::ConfigItem;
 mod model;
 use crate::model::Model;
 use crate::model::Secret;
-use actix_http::Payload;
 
 // Localization
 
