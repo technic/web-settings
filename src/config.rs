@@ -96,6 +96,12 @@ pub struct ConfigBool {
     value: bool,
 }
 
+impl ConfigBool {
+    pub fn new(value: bool) -> Self {
+        ConfigBool { value }
+    }
+}
+
 impl Validate for ConfigBool {
     type Arg = bool;
 }
@@ -163,6 +169,12 @@ impl TryFrom<RawConfigInteger> for ConfigInteger {
 
 validated! {#[derive(Clone, PartialEq)] pub ConfigInteger(RawConfigInteger)}
 
+impl ConfigInteger {
+    pub fn new(min: u32, max: u32, value: u32) -> Result<Self, &'static str> {
+        Self::try_from(RawConfigInteger { min, max, value })
+    }
+}
+
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub struct RawConfigSelection {
     value: String,
@@ -170,6 +182,12 @@ pub struct RawConfigSelection {
 }
 
 validated! {#[derive(Clone, PartialEq)] pub ConfigSelection(RawConfigSelection)}
+
+impl ConfigSelection {
+    pub fn new(value: String, options: Vec<Choice>) -> Result<Self, &'static str> {
+        Self::try_from(RawConfigSelection { value, options })
+    }
+}
 
 impl Validate for ConfigSelection {
     type Arg = str;
@@ -196,7 +214,13 @@ impl TryFrom<RawConfigSelection> for ConfigSelection {
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
-struct Choice {
+pub struct Choice {
     value: String,
     title: String,
+}
+
+impl Choice {
+    pub fn new(value: String, title: String) -> Self {
+        Self { value, title }
+    }
 }

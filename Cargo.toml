@@ -3,6 +3,7 @@ name = "web-settings"
 version = "0.1.0"
 authors = ["Alex Maystrenko <alexeytech@gmail.com>"]
 edition = "2018"
+default-run = "web-settings"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -27,6 +28,10 @@ rand_chacha = "0.2"
 base64 = "0.12"
 env_logger = "0.7"
 fluent-templates = { version = "0.5", features = ["tera"] }
+paste = "1.0.0"
 
 [dev-dependencies]
 cookie = "0.14"
+
+[[bin]]
+name = "template-test"
