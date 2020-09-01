@@ -329,7 +329,7 @@ async fn main() -> std::io::Result<()> {
     let args = clap::App::new("web settings server")
         .version(VERSION)
         .author("technic93")
-        .about("Web interface to edit settings on remote embeded devices")
+        .about("Web interface to edit settings on remote embedded devices")
         .arg(
             clap::Arg::with_name("port")
                 .long("port")
