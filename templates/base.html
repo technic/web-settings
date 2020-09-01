@@ -4,8 +4,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
-    integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/fontawesome.min.css"
     integrity="sha512-8jdwayz5n8F2cnW26l9vpV6+yGOcRAqz6HTu+DQ3FtVIAts2gTdlFZOGpYhvBMXkWEgxPN3Y22UWyZXuDowNLA=="
     crossorigin="anonymous" />
@@ -23,6 +23,7 @@
     body {
       margin: 0;
       padding: 0;
+      min-width: 250px;
     }
 
     .code-text {
@@ -40,6 +41,14 @@
 
     .footer a:hover {
       color: #eaebeb;
+    }
+
+    .cookie-banner {
+      width: 100%;
+      min-width: 250px;
+      margin-top: 0px;
+      position: fixed;
+      display: none;
     }
   </style>
   {% block head %} {% endblock %}
@@ -78,8 +87,52 @@
     </div>
   </footer>
   </div>
+  <div class="cookie-banner bg-light shadow" id="cookieModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center py-2 px-3">
+      <div>
+        This website uses only necessary cookies required to keep user session.
+      </div>
+      <div class="d-flex mt-2 mt-md-0 text-nowrap">
+        <a href="#" id="cookieButton" class="m-1 btn btn-success btn-sm">I accept</a>
+        <a href="./policy" class="m-1 btn btn-secondary btn-sm">Learn More</a>
+      </div>
+    </div>
+  </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"
     integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+  <script type="text/javascript">
+    function setCookie(cname, cvalue, exdays) {
+      var d = new Date();
+      d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+      var expires = "expires=" + d.toUTCString();
+      document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+    }
+
+    function getCookie(cname) {
+      var name = cname + "=";
+      var ca = document.cookie.split(';');
+      for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') {
+          c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+          return c.substring(name.length, c.length);
+        }
+      }
+      return "";
+    }
+
+    if (getCookie('cookieNotification') != 'r0') {
+      $(document).ready(function () {
+        $('#cookieModal').fadeIn('fast')
+      })
+      $('#cookieButton').click(function () {
+        setCookie('cookieNotification', 'r0', 365)
+        $('#cookieModal').fadeOut('fast')
+      })
+    }
+  </script>
   {%- block scripts -%}{% endblock %}
 </body>
 
