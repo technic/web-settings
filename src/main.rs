@@ -366,6 +366,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(state.clone())
             .wrap(middleware::Logger::default())
+            // FIXME: Generate random key
             .wrap(CookieSession::signed(&[0; 32]).secure(false))
             .configure(app_config)
     })
