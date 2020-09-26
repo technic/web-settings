@@ -2,9 +2,9 @@ use crate::config::{Choice, ConfigBool, ConfigInteger, ConfigItem, ConfigSelecti
 use fluent_templates::{static_loader, FluentLoader};
 use lazy_static::lazy_static;
 use serde::Serialize;
-use tera::Tera;
 use std::ops::Deref;
 use std::sync::Mutex;
+use tera::Tera;
 
 pub trait Page {
     const TEMPLATE_NAME: &'static str;
