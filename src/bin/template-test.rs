@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 use std::ops::Deref;
 use tera::Context;
-use web_settings::views::{ErrorPage, IndexPage, Page, SettingsPage, SubmittedPage, LOCALES, TERA};
+use web_settings::views::{ErrorPage, IndexPage, Page, SettingsPage, SubmittedPage, LOCALES, TERA, PolicyPage};
 
 type PagesData = HashMap<&'static str, Box<Context>>;
 
@@ -19,6 +19,7 @@ async fn main() -> std::io::Result<()> {
         box_page::<SettingsPage>(),
         box_page::<SubmittedPage>(),
         box_page::<ErrorPage>(),
+        box_page::<PolicyPage>(),
     ];
 
     {

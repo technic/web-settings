@@ -146,3 +146,13 @@ impl<'a> Page for ErrorPage<'a> {
     }
 }
 test_page!(ErrorPage);
+
+#[derive(Serialize)]
+pub struct PolicyPage {}
+impl Page for PolicyPage {
+    const TEMPLATE_NAME: &'static str = "pages/policy.html";
+    fn mock() -> Self {
+        Self {}
+    }
+}
+test_page!(PolicyPage);

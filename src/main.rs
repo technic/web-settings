@@ -28,7 +28,7 @@ use crate::model::Model;
 use crate::model::Secret;
 
 mod views;
-use crate::views::{IndexPage, Page, SettingsPage, SubmittedPage, LOCALES, TERA};
+use crate::views::{IndexPage, Page, PolicyPage, SettingsPage, SubmittedPage, LOCALES, TERA};
 
 /// Language to use when user did not specify any, or translation is not available at all
 static DEFAULT_LANGUAGE: &str = "en-US";
@@ -141,6 +141,11 @@ fn redirect(location: &str) -> HttpResponse {
 #[derive(Deserialize)]
 struct CodeQuery {
     c: Option<String>,
+}
+
+/// Static policy page
+async fn policy(langs: Langs) -> impl Responder {
+    render_page(PolicyPage {}, langs.as_ref())
 }
 
 /// Index page that asks user for one-time code
@@ -312,6 +317,7 @@ fn app_config(cfg: &mut web::ServiceConfig) {
             .route(web::get().to(index))
             .route(web::post().to(access_settings)),
     )
+    .route("/policy", web::get().to(policy))
     .service(
         web::resource("/settings")
             .route(web::get().to(get_settings))

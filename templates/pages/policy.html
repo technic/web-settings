@@ -1,0 +1,238 @@
+{# ========================================================================== #}
+{# This is a Privacy Policy #}
+{# Any changes to the Policy text must be followed by: #}
+{# 1. Updating of the Policy data in the end of the Policy text #}
+{# 2. Incrementing the Policy revision in the base.html file #}
+{# ========================================================================== #}
+
+{% extends "base.html" %}
+{% block head %}
+<title>IPtvDream 4X</title>
+<style>
+  .bg-gray {
+    margin: 0;
+    padding: 0;
+    background: #e0e0e0;
+  }
+
+  html {
+    font-size: 1.1rem;
+  }
+
+  h1, h2, h3, h4 {
+    color: rgb(22, 88, 147);
+  }
+
+</style>
+{% endblock %}
+
+{%- block content %}
+<div class="w-100 bg-gray">
+  <div class="container-md bg-white policy-container">
+    <div class="row bg-primary">
+      <h1 class="text-white mx-auto p-4 font-weight-bold">IPtvDream 4X web-settings</h1>
+    </div>
+    <div class="row">
+      <div class="col my-3 mx-3 px-4">
+        <h1>Privacy Policy</h1>
+        <p>
+          This privacy policy ("Policy") describes how the personally identifiable information ("Personal Information")
+          you may provide on the <u>https://technic.cf/web/</u> website ("Website") is collected, protected and used.
+          By accessing and using the Website, you acknowledge that you have read, understood, and agree to be bound by
+          the terms of this Agreement.
+          This Policy does not apply to the practices of companies that we do not own or control, or to individuals that
+          we do not employ or manage.
+        </p>
+
+        <h2>What is web-settings and how it works?</h2>
+        <p>
+          Here we give a brief overview of the IPtvDream 4X web-settings structure and corresponding data flow.
+        </p>
+        <p>
+          Web settings is a web interface for
+          <a class="text-body" href="https://bitbucket.org/iptvdream/iptvdream-4x"><u>IPtvDream 4X plugin</u></a>
+          ("Application"),
+          which is an application for set-top-box enigma2 devices ("Device").
+          It allows to configure the Application online with help of a web interface.
+          All the configuration data you enter on this website is sent back directly to the Application.
+          The web-settings server itself hold your data only for a short time,
+          required for the synchronization with the Device.
+        </p>
+        <p>
+          The settings of the Application can be categorized in two types:
+        <ul>
+          <li class="mb-2">
+            <em>Local settings</em>, such as Application usability settings and player configuration.
+            This data is stored on the Device locally, and is normally not further sent to the internet.
+          </li>
+          <li>
+            <em>Provider settings</em>, such as authorization data, streaming server configuration etc.
+            This data is intended to be sent to the provider.
+            We have no control of how this data is processed by the specific provider,
+            so you have to consult with the privacy policy of the corresponding provider.
+            The name of the provider and their company should be vivid from the Application user interface,
+            and it is also shown on the web-settings input page.
+            In case you have any questions, do not hesitate to contact us.
+          </li>
+        </ul>
+        Technically the aforementioned settings usage is done by the Application,
+        so you have to consult Application privacy policy for more details.
+        The Website does not share data with any providers <em>directly</em>.
+        </p>
+
+        <h2>What data do we collect and how we use it?</h2>
+        <p>
+          The Website collects your data so that we can:
+        </p>
+        <ul>
+          <li>
+            Monitor the usage of our services.
+          </li>
+          <li>
+            Detect, prevent and address technical issues.
+          </li>
+          <li>
+            Provide you with the web-settings interface functionality, by forwarding data to the Application.
+            The Application, in turn, shares the data with other third party services (providers).
+          </li>
+        </ul>
+
+        <p>
+          More detailed explanation of different types of data collection and processing is given below.
+        </p>
+
+        <h3>Usage Data</h3>
+        <p>
+          When you open the Website, our servers automatically record information that your browser sends.
+          This data may include information such as your device's IP address, browser type and version, operating system
+          type and version,
+          language preferences or the webpage you were visiting before you came to the Website and Services,
+          pages of the Website that you visit, access times and dates, and other statistics.
+        </p>
+        <p>
+          Information collected automatically is used only to identify potential cases of abuse and establish
+          statistical information regarding the usage and traffic of the Website and Services.
+          This statistical
+          information is not otherwise aggregated in such a way that would identify any particular user of the system.
+        </p>
+        <p>
+          We retain Usage Data for internal analysis purposes.
+          The usage data is stored in the standard web server log files and can be kept for up to 6 months.
+          Once this time period has expired, we will delete your data by usual log rotation procedure.
+        </p>
+        <h3>Personal information</h3>
+        <p>
+          When using the web-settings Website you provide us with the settings data.
+          Settings data can include logins and password for 3rd party services
+          and specific device settings such as player configuration.
+        </p>
+        <p>
+          This data is forwarded to the Application, which can use it to access 3rd party services.
+          Your consent to this Privacy Policy followed by your submission of such information
+          represents your agreement to that transfer.
+          This Privacy Policy doesn't cover how the target Device 
+          (or Application which uses this web settings interface)
+          processes provided data.
+        </p>
+        <p>
+          The settings data is stored in the server cache and is sent to the target Device.
+          As soon as the target Device receives the settings data it usually sends the command to the server to erase
+          the data cached on the server.
+          Otherwise the cache is erased from the server within 24 hours.
+        </p>
+
+        <h2>How do we collect your data?</h2>
+        <p>
+          You directly provide us with most of the data we collect. We collect data and process data when you:
+        </p>
+        <ul>
+          <li>
+            Use or view our website via your browser’s cookies (See more details below).
+          </li>
+          <li>
+            Fill any online forms on the Website.
+          </li>
+        </ul>
+
+        <h2>How do we store your data?</h2>
+        <p>
+          We store your data securely in the data-center hosted by
+          DigitalOcean® within the European Union jurisdiction.
+          Remember that no method of transmission over the Internet,
+          or method of electronic storage is 100% secure.
+          While We strive to use commercially acceptable means to protect your personal data,
+          we cannot guarantee its absolute security.
+        </p>
+
+        <h2>What are your data protection rights?</h2>
+        <p>
+          We would like to make sure you are fully aware of all of your data protection rights.
+          You rights are covered by the
+          <a class="text-body" href="https://gdpr-info.eu/"><u>General Data Protection Regulation</u></a>.
+          As explained above we do not store your data persistently,
+          hence there is no technical possibility to determine which personal information you may have entered
+          on the Website.
+          Yet, this Policy makes sure that you are informed
+          how and which data is forwarded to the Application and 3rd party services.
+        </p>
+
+        <h2>Cookies</h2>
+        <p>
+          Cookies are text files placed on your computer to collect standard Internet log information
+          and visitor behavior information.
+          When you visit our websites, we may collect information from you automatically through
+          cookies or similar technology.
+        </p>
+        <p>
+          For further information, visit
+          <a class="text-body" href="https://allaboutcookies.org"><u>allaboutcookies.org</u></a>.
+        </p>
+
+        <h3>How do we use cookies?</h3>
+        <p>
+          We use cookies for the purposes set out below:
+        </p>
+        <ul>
+          <li>
+            To keep track of your session.
+            We use these cookies so that we recognize you on our website and remember your previously selected
+            preferences.
+            Without the cookies the Website will no work correctly.
+          </li>
+          <li>
+            To identify if users have accepted the use of cookies on the Website.
+          </li>
+        </ul>
+
+        <h2>Privacy policies of other websites and services</h2>
+        <p>
+          This Website contains links to other websites.
+          Our Privacy Policy applies only to our website,
+          so if you click on a link to another website, you should read their privacy policy.
+          Also this Privacy Policy does not apply to applications which may use our web settings interface.
+          We have no control over and assume no responsibility for the content, privacy policies or practices of any
+          third party sites or services.
+        </p>
+
+        <h2>Changes to our Privacy Policy</h2>
+        <p>
+          We keep our Privacy Policy under regular review and place any updates on this web page.
+          <br>
+          This privacy policy was last updated on 27 September 2020.
+        </p>
+        <p>
+          We will notify you of any changes by popup window on the Website.
+        </p>
+
+        <h2>Contact Us</h2>
+        <p>
+          If you have any questions about this Privacy Policy,
+          you can contact us by email:
+          i&#112;t&#118;&#100;&#114;&#101;&#97;m&#46;e&#110;&#105;&#103;&#109;a&#50;&#64;gmai&#108;&#46;com
+        </p>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock -%}
