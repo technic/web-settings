@@ -130,9 +130,12 @@
       return "";
     }
 
+    var enableCookieModal = true;
     if (getCookie('cookieNotification') != 'r0') {
       $(document).ready(function () {
-        $('#cookieModal').fadeIn('fast')
+        if (enableCookieModal) {
+          $('#cookieModal').fadeIn('fast')
+        }
       })
       $('#cookieButton').click(function () {
         setCookie('cookieNotification', 'r0', 365)
