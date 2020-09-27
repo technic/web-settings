@@ -509,7 +509,11 @@ mod tests {
             tx.send(()).unwrap();
         });
 
+        // Delay that simulates time that user needs to a web interface page
+        actix_rt::time::delay_for(std::time::Duration::from_millis(50)).await;
+
         // Authorize user
+        eprintln!("Start login");
         let res = srv
             .post("/")
             .send_form(&AccessForm { code: key })
@@ -545,7 +549,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);
-        eprintln!("Posted new valued");
+        eprintln!("Posted new values");
 
         // Wait for Stb to poll all changes
         rx.await.unwrap();
