@@ -8,9 +8,9 @@ default-run = "web-settings"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "2.0"
+actix-web = "3.0"
 actix-rt = "1.0"
-actix-session = "0.3"
+actix-session = "0.4"
 actix-http = "*"
 clap = "2"
 tera = "1.3"
